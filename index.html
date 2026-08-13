@@ -62,6 +62,30 @@
   .shell { display: flex; min-height: 100vh; }
   body.sidebar-resizing { user-select: none; cursor: col-resize; }
 
+  /* ===== Holodex auto-fill ===== */
+  .holodex-id-row { display: flex; gap: 8px; align-items: stretch; }
+  .autofill-status {
+    margin-top: 8px; padding: 8px 12px; border-radius: 8px;
+    font-size: 12.5px; line-height: 1.6;
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .autofill-status.loading { background: var(--bg-accent); color: var(--fill-accent); border: 1px solid rgba(182,134,60,0.3); }
+  .autofill-status.ok  { background: rgba(76,185,122,0.1); color: #2E8B6A; border: 1px solid rgba(76,185,122,0.3); }
+  .autofill-status.err { background: var(--bg-danger); color: var(--text-danger); border: 1px solid var(--border-danger); }
+  .autofill-preview {
+    margin-top: 10px; padding: 10px 12px; border-radius: 10px;
+    background: var(--surface-1); border: 1px solid var(--border);
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 12px;
+  }
+  .autofill-preview-row { display: flex; flex-direction: column; gap: 2px; }
+  .autofill-preview-label { color: var(--text-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .autofill-preview-val { color: var(--text-primary); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .autofill-preview-avatar { display: flex; align-items: center; gap: 8px; grid-column: 1 / -1; margin-bottom: 4px; }
+  .autofill-preview-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--border-pro); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes field-flash { 0%,100%{background:transparent} 40%{background:rgba(76,185,122,0.12)} }
+  .autofill-flashed { animation: field-flash 1s ease; }
+
   /* ===== Sidebar ===== */
   .sidebar {
     width: var(--sidebar-w, 220px);
@@ -1319,8 +1343,17 @@
     </div>
     <div class="field">
       <label class="label">Holodex 頻道 ID（選填）<span class="label-hint">格式為 UC 開頭，填了才會自動顯示直播動態</span></label>
-      <input type="text" id="oshi-holodex-id-input" placeholder="例：UC1DCedRgGHBdm81E1llLhOQ">
-      <div class="label-hint" style="margin-top:4px;">在 <a href="https://holodex.net/" target="_blank" rel="noopener" style="color:var(--fill-accent);">holodex.net</a> 搜尋這位推し，點進頻道頁面，網址列裡 <code>/channel/</code> 後面那串就是</div>
+      <div class="holodex-id-row">
+        <input type="text" id="oshi-holodex-id-input" placeholder="例：UC1DCedRgGHBdm81E1llLhOQ　或貼入頻道網址" style="flex:1;">
+        <button type="button" class="btn btn-sm btn-pro" id="autofill-btn" onclick="autoFillFromHolodex()">
+          <i class="ti ti-sparkles" id="autofill-icon"></i> 自動帶入
+        </button>
+      </div>
+      <div class="label-hint" style="margin-top:4px;">
+        在 <a href="https://holodex.net/" target="_blank" rel="noopener" style="color:var(--fill-accent);">holodex.net</a>
+        搜尋這位推し，點進頻道頁面，把網址列的內容直接貼進來就好（支援完整網址或純 ID）
+      </div>
+      <div id="autofill-status" class="autofill-status hidden"></div>
     </div>
 
     <div class="modal-footer">
@@ -3045,6 +3078,170 @@ function resetColorPicker(existingColors, existingExtras, existingAgency, existi
 }
 
 /* ===== Oshi modal ===== */
+/* ===== Holodex channel auto-fill ===== */
+function extractChannelId(raw) {
+  raw = raw.trim();
+  // 支援各種格式：
+  // UC1DCedRgGHBdm81E1llLhOQ
+  // https://www.youtube.com/channel/UC1DCedRgGHBdm81E1llLhOQ
+  // https://holodex.net/channel/UC1DCedRgGHBdm81E1llLhOQ
+  const m = raw.match(/UC[a-zA-Z0-9_-]{22}/);
+  return m ? m[0] : null;
+}
+
+async function tryFetchImageAsBase64(url) {
+  // 嘗試把頭像下載轉成 base64，失敗就回傳 null（CORS 可能擋）
+  try {
+    const res = await fetch(url);
+    if(!res.ok) return null;
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+
+async function autoFillFromHolodex() {
+  const rawInput = document.getElementById('oshi-holodex-id-input').value;
+  const channelId = extractChannelId(rawInput);
+  const statusEl  = document.getElementById('autofill-status');
+  const btn       = document.getElementById('autofill-btn');
+  const icon      = document.getElementById('autofill-icon');
+
+  // 先把輸入框的值標準化為純 ID
+  if(channelId) document.getElementById('oshi-holodex-id-input').value = channelId;
+
+  if(!channelId) {
+    statusEl.className = 'autofill-status err';
+    statusEl.innerHTML = '<i class="ti ti-alert-circle"></i> 找不到有效的頻道 ID，請貼入完整網址或 UC 開頭的 ID';
+    statusEl.classList.remove('hidden');
+    return;
+  }
+
+  // Loading 狀態
+  btn.disabled = true;
+  icon.className = 'ti ti-loader-2';
+  icon.style.animation = 'spin 1s linear infinite';
+  statusEl.className = 'autofill-status loading';
+  statusEl.innerHTML = '<i class="ti ti-loader-2"></i> 從 Holodex 取得頻道資料中...';
+  statusEl.classList.remove('hidden');
+
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if(HOLODEX_API_KEY) headers['X-APIKEY'] = HOLODEX_API_KEY;
+
+    const res = await fetch(`https://holodex.net/api/v2/channels/${channelId}`, { headers });
+    if(!res.ok) {
+      const msg = res.status === 404 ? '找不到這個頻道，請確認 ID 是否正確'
+                : res.status === 403 ? 'API 金鑰無效或請求被拒，請確認 HOLODEX_API_KEY 設定'
+                : `API 錯誤（HTTP ${res.status}）`;
+      throw new Error(msg);
+    }
+    const ch = await res.json();
+
+    // ── 決定各欄位填什麼 ──────────────────────────────
+    const name       = ch.english_name || ch.name || '';
+    const nameJp     = ch.name || '';
+    const org        = ch.org || '';
+    const unit       = ch.group || ch.suborg || '';
+    const twitter    = ch.twitter ? (ch.twitter.startsWith('http') ? ch.twitter : `https://twitter.com/${ch.twitter.replace(/^@/,'')}`) : '';
+    const youtube    = `https://www.youtube.com/channel/${channelId}`;
+    const photoUrl   = ch.photo || ch.thumbnail || '';
+    const subCount   = ch.subscriber_count ? Number(ch.subscriber_count).toLocaleString() + ' 訂閱' : '';
+    const debut      = ch.published_at ? ch.published_at.slice(0,10) : ''; // yyyy-mm-dd
+
+    // ── 統計實際填了幾個欄位 ──────────────────────────
+    let filled = [];
+
+    function flashFill(id, value) {
+      if(!value) return;
+      const el = document.getElementById(id);
+      if(!el || el.value === value) return;
+      el.value = value;
+      el.classList.remove('autofill-flashed');
+      void el.offsetWidth;          // reflow 觸發動畫重置
+      el.classList.add('autofill-flashed');
+      filled.push(el.labels?.[0]?.textContent?.trim() || id);
+    }
+
+    // 名字：只有空白時才填（避免蓋掉使用者已輸入的暱稱）
+    if(!document.getElementById('oshi-name-input').value.trim()) {
+      flashFill('oshi-name-input', name || nameJp);
+    }
+
+    flashFill('oshi-agency-input', org);
+    flashFill('oshi-unit-input',   unit);
+    flashFill('oshi-link-youtube-input', youtube);
+    if(twitter) flashFill('oshi-link-twitter-input', twitter);
+    if(debut)   {
+      const debutEl = document.getElementById('oshi-debut-input');
+      if(debutEl && !debutEl.value) { debutEl.value = debut; filled.push('出道日期'); }
+    }
+
+    // 訂閱數 → 加入 extras
+    if(subCount && !selExtras.includes(subCount)) {
+      selExtras.push(subCount);
+      renderExtraChips();
+      filled.push('訂閱數');
+    }
+
+    // affil preview 更新
+    renderAffilPreview();
+
+    // 嘗試下載頭像
+    let photoResult = '';
+    if(photoUrl) {
+      const b64 = await tryFetchImageAsBase64(photoUrl);
+      if(b64) {
+        selImage = b64;
+        avatarMode = 'image';
+        switchAvatarMode('image');
+        updateImagePreview();
+        filled.push('頭像');
+        photoResult = '（頭像已帶入）';
+      } else {
+        photoResult = '（頭像因跨域限制無法自動下載，可手動上傳）';
+      }
+    }
+
+    // ── 顯示預覽卡片 ──────────────────────────────────
+    statusEl.className = 'autofill-status ok';
+    statusEl.innerHTML = `
+      <div style="width:100%">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+          <i class="ti ti-circle-check"></i>
+          <strong>成功帶入 ${filled.length} 個欄位</strong>
+          <span style="font-weight:400;color:var(--text-muted);">${photoResult}</span>
+        </div>
+        <div class="autofill-preview">
+          ${photoUrl ? `<div class="autofill-preview-avatar">
+            <img class="autofill-preview-img" src="${photoUrl}" onerror="this.style.display='none'" alt="">
+            <div>
+              <div style="font-weight:600;font-size:13px;">${escapeHtml(name||nameJp)}</div>
+              <div style="font-size:11.5px;color:var(--text-muted);">${escapeHtml(org)}${unit?' · '+unit:''}</div>
+            </div>
+          </div>` : ''}
+          ${subCount ? `<div class="autofill-preview-row"><div class="autofill-preview-label">訂閱數</div><div class="autofill-preview-val">${escapeHtml(subCount)}</div></div>` : ''}
+          ${debut    ? `<div class="autofill-preview-row"><div class="autofill-preview-label">出道日期</div><div class="autofill-preview-val">${debut}</div></div>` : ''}
+          ${ch.video_count ? `<div class="autofill-preview-row"><div class="autofill-preview-label">影片數</div><div class="autofill-preview-val">${Number(ch.video_count).toLocaleString()}</div></div>` : ''}
+          ${ch.clip_count  ? `<div class="autofill-preview-row"><div class="autofill-preview-label">切片數</div><div class="autofill-preview-val">${Number(ch.clip_count).toLocaleString()}</div></div>` : ''}
+        </div>
+      </div>`;
+
+  } catch(e) {
+    statusEl.className = 'autofill-status err';
+    statusEl.innerHTML = `<i class="ti ti-alert-circle"></i> ${escapeHtml(e.message || String(e))}`;
+  } finally {
+    btn.disabled = false;
+    icon.className = 'ti ti-sparkles';
+    icon.style.animation = '';
+  }
+}
+
+/* ===== Oshi modal ===== */
 function openOshiModal(editId) {
   editingOshiId = editId || null;
   let existing = null;
@@ -3075,6 +3272,9 @@ function openOshiModal(editId) {
   document.getElementById('oshi-link-twitter-input').value = existing && existing.links ? (existing.links.twitter || '') : '';
   document.getElementById('oshi-link-twitch-input').value = existing && existing.links ? (existing.links.twitch || '') : '';
   document.getElementById('oshi-holodex-id-input').value = existing ? (existing.holodexId || '') : '';
+  // 清除上次自動帶入的狀態提示
+  const statusEl = document.getElementById('autofill-status');
+  if(statusEl) { statusEl.className = 'autofill-status hidden'; statusEl.innerHTML = ''; }
   document.getElementById('oshi-image-input').value = '';
   updateImagePreview();
   switchAvatarMode(avatarMode);
