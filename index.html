@@ -878,6 +878,7 @@
     <button class="nav-item draggable-item" draggable="true" data-view="clips" onclick="goView('clips')"><i class="ti ti-grip-vertical nav-drag-handle"></i><i class="ti ti-scissors"></i> 精華剪輯 <span class="nav-count" id="count-clips">0</span></button>
     <button class="nav-item draggable-item" draggable="true" data-view="karaokemen" onclick="goView('karaokemen')"><i class="ti ti-grip-vertical nav-drag-handle"></i><i class="ti ti-users"></i> 烤肉man 頻道 <span class="nav-count" id="count-karaokemen">0</span></button>
     <button class="nav-item draggable-item" draggable="true" data-view="news" onclick="goView('news')"><i class="ti ti-grip-vertical nav-drag-handle"></i><i class="ti ti-news"></i> VTuber 新聞</button>
+    <button class="nav-item draggable-item" draggable="true" data-view="holodex" onclick="goView('holodex')"><i class="ti ti-grip-vertical nav-drag-handle"></i><i class="ti ti-broadcast"></i> 直播動態</button>
     <button class="nav-item draggable-item" draggable="true" data-view="calendar" onclick="goView('calendar')"><i class="ti ti-grip-vertical nav-drag-handle"></i><i class="ti ti-calendar"></i> 日曆</button>
     <button class="nav-item draggable-item" draggable="true" data-view="notes" onclick="goView('notes')"><i class="ti ti-grip-vertical nav-drag-handle"></i><i class="ti ti-notebook"></i> 筆記 <span class="nav-count" id="count-notes">0</span></button>
     <button class="nav-item draggable-item" draggable="true" data-view="backup" onclick="goView('backup')"><i class="ti ti-grip-vertical nav-drag-handle"></i><i class="ti ti-database"></i> 備份</button>
@@ -1083,6 +1084,25 @@
       </div>
     </div>
 
+    <!-- VIEW: Holodex live status -->
+    <div id="view-holodex" class="hidden">
+      <div class="news-tabs">
+        <button class="news-tab active" id="holodex-tab-btn-live" onclick="switchHolodexTab('live')"><i class="ti ti-broadcast"></i> 直播中 / 排程</button>
+        <button class="news-tab" id="holodex-tab-btn-debug" onclick="switchHolodexTab('debug')"><i class="ti ti-bug"></i> 偵錯資訊</button>
+      </div>
+
+      <div id="holodex-tab-live">
+        <div class="filter-bar">
+          <div style="flex:1;font-size:12.5px;color:var(--text-muted);">來源：<a href="https://holodex.net/" target="_blank" rel="noopener" style="color:var(--fill-accent);">Holodex</a>（只顯示有設定 Holodex 頻道 ID 的推し；只列出直播中，以及未來 48 小時內排定的直播）</div>
+          <button class="btn btn-sm" onclick="renderHolodexPage(true)"><i class="ti ti-refresh"></i> 重新整理</button>
+        </div>
+        <div class="live-status-list" id="holodex-page-list" style="margin-top:14px;"></div>
+      </div>
+
+      <div id="holodex-tab-debug" class="hidden">
+        <div id="holodex-debug-panel" style="font-size:13px; line-height:1.9; color:var(--text-primary);"></div>
+      </div>
+    </div>
 
     <!-- VIEW: calendar -->
     <div id="view-calendar" class="hidden">
@@ -2025,7 +2045,7 @@ function goView(view, param, keepSearch) {
 
   document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === view));
 
-  ['all','oshi-all','oshi-detail','streams','clips','karaokemen','karaokemen-detail','stream-detail','notes','backup','calendar','timezone','bookmark-detail','news'].forEach(v => {
+  ['all','oshi-all','oshi-detail','streams','clips','karaokemen','karaokemen-detail','stream-detail','notes','backup','calendar','timezone','bookmark-detail','news','holodex'].forEach(v => {
     const el = document.getElementById('view-' + v);
     if(el) el.classList.toggle('hidden', v !== view);
   });
@@ -2051,6 +2071,7 @@ function goView(view, param, keepSearch) {
   if(view === 'timezone') initTzView();
   if(view === 'bookmark-detail') renderBookmarkDetail(param);
   if(view === 'news') loadVtuberNews();
+  if(view === 'holodex') renderHolodexPage(true);
   renderSidebarNav();
   updateSearchStatus();
 }
@@ -2597,6 +2618,11 @@ const HOLODEX_CACHE_KEY = 'vtuber-oshi-holodex-cache';
 const HOLODEX_CACHE_MS = 5 * 60 * 1000; // 5 分鐘內不重抓，直播狀態變化快但也不用一直打 API
 let holodexItemsCache = [];
 let holodexFetchedAt = 0;
+let holodexLastError = null;
+let holodexLastRawCount = null;
+let holodexLastMatchedCount = null;
+let holodexLastRequestUrl = null;
+let holodexLastStatusCode = null;
 
 function getHolodexChannelIds() {
   const { oshi } = getData();
@@ -2621,11 +2647,22 @@ async function fetchHolodexData(forceRefresh) {
   const idsParam = channels.map(c => c.id).join(',');
   const url = `https://holodex.net/api/v2/live?channel_id=${encodeURIComponent(idsParam)}&status=live,upcoming&limit=50`;
   const headers = HOLODEX_API_KEY ? { 'X-APIKEY': HOLODEX_API_KEY } : {};
+  holodexLastRequestUrl = url;
+  holodexLastError = null;
 
-  const resp = await fetch(url, { headers, cache: 'no-store' });
-  if(!resp.ok && resp.status !== 304) throw new Error('Holodex API 回應失敗：' + resp.status);
-  const data = await resp.json();
-  if(!Array.isArray(data)) throw new Error('Holodex API 格式錯誤');
+  let resp, data;
+  try {
+    resp = await fetch(url, { headers, cache: 'no-store' });
+    holodexLastStatusCode = resp.status;
+    if(!resp.ok && resp.status !== 304) throw new Error('Holodex API 回應失敗：狀態碼 ' + resp.status);
+    data = await resp.json();
+    if(!Array.isArray(data)) throw new Error('Holodex API 格式錯誤（回傳的不是陣列）');
+  } catch(err) {
+    holodexLastError = err.message || String(err);
+    throw err;
+  }
+
+  holodexLastRawCount = data.length;
 
   const items = data.map(v => {
     const match = channels.find(c => c.id === (v.channel && v.channel.id));
@@ -2640,6 +2677,7 @@ async function fetchHolodexData(forceRefresh) {
     };
   }).filter(it => it.oshi);
 
+  holodexLastMatchedCount = items.length;
   holodexItemsCache = items;
   holodexFetchedAt = Date.now();
   localStorage.setItem(HOLODEX_CACHE_KEY, JSON.stringify({ items, fetchedAt: holodexFetchedAt }));
@@ -2705,6 +2743,101 @@ function openHolodexPlayer(videoId, oshiName) {
 function closeHolodexPlayer() {
   document.getElementById('holodex-player-frame').innerHTML = '';
   document.getElementById('holodex-player-modal').classList.remove('open');
+}
+
+/* ===== Holodex dedicated page ===== */
+function switchHolodexTab(tab) {
+  const liveBtn = document.getElementById('holodex-tab-btn-live');
+  const debugBtn = document.getElementById('holodex-tab-btn-debug');
+  const livePane = document.getElementById('holodex-tab-live');
+  const debugPane = document.getElementById('holodex-tab-debug');
+  const showDebug = tab === 'debug';
+  liveBtn.classList.toggle('active', !showDebug);
+  debugBtn.classList.toggle('active', showDebug);
+  livePane.classList.toggle('hidden', showDebug);
+  debugPane.classList.toggle('hidden', !showDebug);
+  if(showDebug) renderHolodexDebugPanel();
+}
+
+async function renderHolodexPage(forceRefresh) {
+  const list = document.getElementById('holodex-page-list');
+  if(!list) return;
+
+  const configured = getHolodexChannelIds();
+  if(!configured.length) {
+    list.innerHTML = `<div class="news-empty"><i class="ti ti-broadcast-off"></i><p>目前沒有任何推し設定 Holodex 頻道 ID，先到推し編輯畫面填一個試試看</p></div>`;
+    renderHolodexDebugPanel();
+    return;
+  }
+
+  list.innerHTML = `<div class="news-loading"><i class="ti ti-loader-2"></i><p>正在讀取直播動態…</p></div>`;
+
+  let items;
+  try {
+    items = forceRefresh ? await fetchHolodexData(true) : await ensureHolodexData();
+  } catch(err) {
+    list.innerHTML = `<div class="news-error"><i class="ti ti-alert-triangle"></i><p>讀取失敗：${escapeHtml(err.message || String(err))}</p></div>`;
+    renderHolodexDebugPanel();
+    return;
+  }
+
+  if(!items.length) {
+    list.innerHTML = `<div class="news-empty"><i class="ti ti-broadcast-off"></i><p>目前沒有直播中、也沒有 48 小時內的排程</p></div>`;
+    renderHolodexDebugPanel();
+    return;
+  }
+
+  const live = items.filter(it => it.status === 'live');
+  const upcoming = items.filter(it => it.status === 'upcoming')
+    .sort((a, b) => new Date(a.startScheduled) - new Date(b.startScheduled));
+
+  list.innerHTML = [...live, ...upcoming].map(it => {
+    const isLive = it.status === 'live';
+    const sub = isLive ? '🔴 直播中' : formatHolodexCountdown(it.startScheduled);
+    return `<button class="live-status-chip ${isLive ? 'is-live' : ''}" onclick="${isLive ? `openHolodexPlayer('${it.videoId}', '${escapeAttr(it.oshi.name)}')` : `goOshiDetail('${it.oshi.id}')`}">
+      ${isLive ? '<span class="live-dot"></span>' : ''}
+      <span class="live-status-avatar">${it.oshi.image ? `<img src="${it.oshi.image}" alt="">` : (it.oshi.emoji || '📺')}</span>
+      <span class="live-status-text">
+        <div>${escapeHtml(it.oshi.name)}　<span style="color:${isLive ? '#c0392b' : 'var(--text-muted)'};font-size:11.5px;">${sub}</span></div>
+        <div class="live-status-title">${escapeHtml(it.title || '')}</div>
+      </span>
+    </button>`;
+  }).join('');
+
+  renderHolodexDebugPanel();
+}
+
+function renderHolodexDebugPanel() {
+  const el = document.getElementById('holodex-debug-panel');
+  if(!el) return;
+  const configured = getHolodexChannelIds();
+  const lastFetchLabel = holodexFetchedAt ? new Date(holodexFetchedAt).toLocaleString('zh-TW') : '（尚未抓取過）';
+
+  const rows = [
+    ['已設定 Holodex 頻道 ID 的推し數', String(configured.length)],
+    ['API Key 是否已填', HOLODEX_API_KEY ? '是' : '否（未填也能用，但較容易被限流）'],
+    ['最後一次抓取時間', lastFetchLabel],
+    ['最後請求網址', holodexLastRequestUrl || '（尚未發送過請求）'],
+    ['最後 HTTP 狀態碼', holodexLastStatusCode == null ? '（無）' : String(holodexLastStatusCode)],
+    ['API 原始回傳筆數', holodexLastRawCount == null ? '（無）' : String(holodexLastRawCount)],
+    ['成功比對到推し的筆數', holodexLastMatchedCount == null ? '（無）' : String(holodexLastMatchedCount)],
+    ['最後錯誤訊息', holodexLastError || '（無錯誤）']
+  ];
+
+  const configuredListHtml = configured.length
+    ? `<ul style="margin:6px 0 0 18px; padding:0;">${configured.map(c => `<li>${escapeHtml(c.oshi.name)} — <code>${escapeHtml(c.id)}</code></li>`).join('')}</ul>`
+    : '<div style="color:var(--text-muted);">（無）</div>';
+
+  el.innerHTML = `
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px;">
+      ${rows.map(([k,v]) => `<div style="display:flex; gap:10px; padding:4px 0; border-bottom:1px solid var(--border);"><div style="flex:0 0 180px; color:var(--text-muted);">${escapeHtml(k)}</div><div style="flex:1; word-break:break-all;">${escapeHtml(v)}</div></div>`).join('')}
+    </div>
+    <div style="margin-top:14px;">
+      <div style="color:var(--text-muted); font-size:12px; margin-bottom:4px;">目前已設定的頻道：</div>
+      ${configuredListHtml}
+    </div>
+    <div style="margin-top:14px; font-size:12px; color:var(--text-muted);">如果「API 原始回傳筆數」大於 0，但「成功比對到推し的筆數」是 0，代表 API 有回應資料，但程式沒辦法把回傳的頻道跟你設定的推し對上，這種情況請把這頁截圖給開發者看。</div>
+  `;
 }
 
 /* ===== Stats ===== */
