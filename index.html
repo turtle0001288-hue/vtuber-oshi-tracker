@@ -2622,8 +2622,8 @@ async function fetchHolodexData(forceRefresh) {
   const url = `https://holodex.net/api/v2/live?channel_id=${encodeURIComponent(idsParam)}&status=live,upcoming&limit=50`;
   const headers = HOLODEX_API_KEY ? { 'X-APIKEY': HOLODEX_API_KEY } : {};
 
-  const resp = await fetch(url, { headers });
-  if(!resp.ok) throw new Error('Holodex API 回應失敗：' + resp.status);
+  const resp = await fetch(url, { headers, cache: 'no-store' });
+  if(!resp.ok && resp.status !== 304) throw new Error('Holodex API 回應失敗：' + resp.status);
   const data = await resp.json();
   if(!Array.isArray(data)) throw new Error('Holodex API 格式錯誤');
 
