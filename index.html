@@ -239,6 +239,7 @@
     transition: background 0.15s, border-color 0.15s, transform 0.12s; font-family: var(--font-sans); white-space: nowrap;
   }
   .btn:hover { background: var(--surface-1); transform: translateY(-1px); }
+  a.btn { text-decoration: none; }
   .btn-pro { background: var(--bg-pro); color: var(--text-pro); border-color: var(--border-pro); }
   .btn-pro:hover { border-color: var(--fill-pro); }
   .btn-sm { padding: 4px 10px; font-size: 12px; }
@@ -319,6 +320,15 @@
 
   /* ===== VTuber news cards ===== */
   .news-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .news-tabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .news-tab {
+    padding: 8px 16px; font-size: 13px; color: var(--text-muted); background: transparent;
+    border: none; border-bottom: 2px solid transparent; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-sans);
+    margin-bottom: -1px; transition: color 0.15s, border-color 0.15s;
+  }
+  .news-tab:hover { color: var(--text-primary); }
+  .news-tab.active { color: var(--fill-accent); border-bottom-color: var(--fill-accent); font-weight: 500; }
   .news-card {
     background: var(--surface-2); border: 1px solid var(--border);
     border-radius: 16px; overflow: hidden; cursor: pointer; text-decoration: none; color: inherit;
@@ -511,6 +521,55 @@
   }
   .cal-stream-chip:hover { background: var(--fill-pro); color: #fff; }
   .cal-more { font-size: 10px; color: var(--text-muted); padding-left: 2px; }
+  .cal-birthday-chip {
+    font-size: 10.5px; background: var(--bg-accent); color: var(--fill-accent);
+    border-radius: 5px; padding: 2px 5px; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    border: none; text-align: left; font-family: var(--font-sans); width: 100%;
+  }
+  .cal-birthday-chip:hover { background: var(--fill-accent); color: #fff; }
+  .cal-cell.has-birthday { border-color: var(--fill-accent); }
+  .birthday-list { display: flex; flex-direction: column; gap: 8px; }
+  .birthday-chip {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--bg-accent); cursor: pointer; text-align: left; font-family: var(--font-sans);
+  }
+  .birthday-chip:hover { border-color: var(--fill-accent); }
+  .birthday-chip.is-today { border: 1.5px solid var(--fill-accent); }
+  .birthday-avatar { font-size: 20px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .birthday-avatar img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+  .birthday-text { font-size: 13px; color: var(--text-primary); }
+  .cal-live-chip {
+    font-size: 10.5px; background: #fde8e8; color: #c0392b;
+    border-radius: 5px; padding: 2px 5px; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    border: none; text-align: left; font-family: var(--font-sans); width: 100%;
+  }
+  .cal-live-chip:hover { background: #c0392b; color: #fff; }
+  .cal-sched-chip {
+    font-size: 10.5px; background: #eaf2fd; color: #2f6fce;
+    border-radius: 5px; padding: 2px 5px; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    border: none; text-align: left; font-family: var(--font-sans); width: 100%;
+  }
+  .cal-sched-chip:hover { background: #2f6fce; color: #fff; }
+  .live-status-list { display: flex; flex-direction: column; gap: 8px; }
+  .live-status-chip {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--surface); cursor: pointer; text-align: left; font-family: var(--font-sans);
+  }
+  .live-status-chip.is-live { border-color: #c0392b; background: #fdf1f0; }
+  .live-status-chip:hover { border-color: var(--fill-accent); }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #c0392b; flex-shrink: 0; animation: live-pulse 1.4s infinite; }
+  @keyframes live-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .live-status-avatar { font-size: 20px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .live-status-avatar img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+  .live-status-text { font-size: 13px; color: var(--text-primary); flex: 1; min-width: 0; }
+  .live-status-title { font-size: 11.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .holodex-player-frame { position: relative; width: 100%; padding-top: 56.25%; }
+  .holodex-player-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: var(--radius); }
   .calendar-legend { display: flex; flex-direction: column; gap: 10px; }
   .stream-date-badge {
     display: inline-flex; align-items: center; gap: 4px;
@@ -857,6 +916,18 @@
 
     <!-- VIEW: all -->
     <div id="view-all">
+      <div class="section-block" id="live-status-block" style="display:none;">
+        <div class="section-head">
+          <div class="section-head-title"><i class="ti ti-broadcast"></i> 直播動態</div>
+        </div>
+        <div class="live-status-list" id="live-status-list-preview"></div>
+      </div>
+      <div class="section-block" id="birthday-block" style="display:none;">
+        <div class="section-head">
+          <div class="section-head-title"><i class="ti ti-cake"></i> 生日倒數</div>
+        </div>
+        <div class="birthday-list" id="birthday-list-preview"></div>
+      </div>
       <div class="section-block">
         <div class="section-head">
           <div class="section-head-title"><i class="ti ti-heart"></i> 我的推し</div>
@@ -984,12 +1055,34 @@
 
     <!-- VIEW: VTuber news -->
     <div id="view-news" class="hidden">
-      <div class="filter-bar">
-        <div style="flex:1;font-size:12.5px;color:var(--text-muted);">來源：<a href="https://vchavcha.com/category/vtuber-news/" target="_blank" rel="noopener" style="color:var(--fill-accent);">Vchavcha</a>、<a href="https://game.udn.com/game/tag/VTuber" target="_blank" rel="noopener" style="color:var(--fill-accent);">遊戲角落</a>、<a href="https://tw.news.yahoo.com/tag/VTuber" target="_blank" rel="noopener" style="color:var(--fill-accent);">Yahoo新聞</a>（依發布時間新到舊排序，點卡片會開新分頁看原文，這裡只顯示標題與摘要）</div>
-        <button class="btn btn-sm" onclick="loadVtuberNews(true)"><i class="ti ti-refresh"></i> 重新整理</button>
+      <div class="news-tabs">
+        <button class="news-tab active" id="news-tab-btn-vtuber" onclick="switchNewsTab('vtuber')"><i class="ti ti-heart"></i> VTuber 新聞</button>
+        <button class="news-tab" id="news-tab-btn-gnn" onclick="switchNewsTab('gnn')"><i class="ti ti-device-gamepad-2"></i> GNN 遊戲新聞</button>
       </div>
-      <div class="news-grid" id="news-grid"></div>
+
+      <div id="news-tab-vtuber">
+        <div class="filter-bar">
+          <div style="flex:1;font-size:12.5px;color:var(--text-muted);">來源：<a href="https://vchavcha.com/category/vtuber-news/" target="_blank" rel="noopener" style="color:var(--fill-accent);">Vchavcha</a>（依發布時間新到舊排序，點卡片會開新分頁看原文，這裡只顯示標題與摘要）</div>
+          <button class="btn btn-sm" onclick="loadVtuberNews(true)"><i class="ti ti-refresh"></i> 重新整理</button>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:2px 0 14px;">
+          <span style="font-size:12px; color:var(--text-muted);">其他新聞站快速前往：</span>
+          <a class="btn btn-sm" href="https://tw.news.yahoo.com/tag/VTuber" target="_blank" rel="noopener noreferrer"><i class="ti ti-external-link"></i> Yahoo新聞</a>
+          <a class="btn btn-sm" href="https://game.udn.com/game/tag/VTuber" target="_blank" rel="noopener noreferrer"><i class="ti ti-external-link"></i> 遊戲角落</a>
+          <a class="btn btn-sm" href="https://www.4gamers.com.tw/news/tag/VTuber" target="_blank" rel="noopener noreferrer"><i class="ti ti-external-link"></i> 4Gamers</a>
+        </div>
+        <div class="news-grid" id="news-grid"></div>
+      </div>
+
+      <div id="news-tab-gnn" class="hidden">
+        <div class="filter-bar">
+          <div style="flex:1;font-size:12.5px;color:var(--text-muted);">來源：<a href="https://gnn.gamer.com.tw/" target="_blank" rel="noopener" style="color:var(--fill-accent);">巴哈姆特 GNN 新聞網</a>（官方原生 RSS，一般遊戲新聞，不限 VTuber 相關內容）</div>
+          <button class="btn btn-sm" onclick="loadGnnNews(true)"><i class="ti ti-refresh"></i> 重新整理</button>
+        </div>
+        <div class="news-grid" id="news-grid-gnn"></div>
+      </div>
     </div>
+
 
     <!-- VIEW: calendar -->
     <div id="view-calendar" class="hidden">
@@ -1203,6 +1296,11 @@
         <input type="text" id="oshi-link-twitter-input" placeholder="X (Twitter) 網址">
         <input type="text" id="oshi-link-twitch-input" placeholder="Twitch / 其他網址">
       </div>
+    </div>
+    <div class="field">
+      <label class="label">Holodex 頻道 ID（選填）<span class="label-hint">格式為 UC 開頭，填了才會自動顯示直播動態</span></label>
+      <input type="text" id="oshi-holodex-id-input" placeholder="例：UC1DCedRgGHBdm81E1llLhOQ">
+      <div class="label-hint" style="margin-top:4px;">在 <a href="https://holodex.net/" target="_blank" rel="noopener" style="color:var(--fill-accent);">holodex.net</a> 搜尋這位推し，點進頻道頁面，網址列裡 <code>/channel/</code> 後面那串就是</div>
     </div>
 
     <div class="modal-footer">
@@ -1437,6 +1535,17 @@
   </div>
 </div>
 
+<!-- ===== Holodex live player Modal ===== -->
+<div class="overlay" id="holodex-player-modal">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-head">
+      <span id="holodex-player-title">直播播放中</span>
+      <button class="modal-close" onclick="closeHolodexPlayer()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="holodex-player-frame" id="holodex-player-frame"></div>
+  </div>
+</div>
+
 <!-- ===== Cloud sync auth Modal (email/password) ===== -->
 <div class="overlay" id="cloud-auth-modal">
   <div class="modal">
@@ -1613,19 +1722,40 @@ const NEWS_API_KEY = '08alijoze2z2vetspd8suiqswzkw1poakmi7iicq'; // 選填：免
 const NEWS_CACHE_KEY = 'vtuber-oshi-news-cache';
 const NEWS_CACHE_MS = 30 * 60 * 1000; // 30 分鐘內重進頁面不重新抓，避免浪費額度
 
-// 新聞來源清單。遊戲角落／Yahoo 新聞這兩個來源是用 RSS.app 從網頁標籤頁轉出來的 feed，
-// 頁面上除了標籤篩選過的文章列表以外，還有側欄「最新文章／最多瀏覽」等不相關內容，
-// 但確認過這些側欄項目一律排在 feed 最後面（標籤篩選出來的文章都在前面），
-// 而下面 fetchNewsSourcePage 呼叫 rss2json 時有帶 &count=20，只取 feed 最前面 20 筆，
-// 側欄雜訊天然就被擋在外面了，因此這裡不需要再用標題關鍵字過濾（那樣做反而會誤殺
-// 像「holo Ceci因家庭緊急因素宣布長休」這種標題沒寫「VTuber」三個字、但確實相關的新聞）。
+// GNN 遊戲新聞：巴哈姆特官方原生 RSS，內容是一般遊戲新聞，不限 VTuber 相關，
+// 使用者接受這點、特意要求獨立成另一個分頁顯示，因此不套用 NEWS_FILTER_KEYWORDS 過濾。
+const GNN_SOURCE = { key: 'gnn', name: 'GNN新聞', url: 'https://gnn.gamer.com.tw/rss.xml', supportsPaging: false };
+const GNN_NEWS_CACHE_KEY = 'vtuber-oshi-gnn-news-cache';
+let gnnNewsLoading = false;
+let gnnNewsItems = [];
+let gnnNewsTabLoaded = false;
+
+// 新聞來源清單。遊戲角落／Yahoo 新聞這兩個來源是用 RSS.app 從網頁標籤頁轉出來的 feed。
+// 原本假設這類 feed 的側欄雜訊一律排在標籤篩選過的文章後面，靠 &count=20 自然擋掉；
+// 但實測發現 Yahoo 這個來源會混入完全不相關的一般新聞（不是排在後面，是直接混在前面），
+// 所以改為對標記 filterNoise:true 的來源多加一層「標題/摘要需包含 VTuber 相關關鍵字」的過濾，
+// 避免把非 VTuber 新聞也顯示出來。vchavcha 本身就是 VTuber 專門網站的 feed，不需要這層過濾。
 // supportsPaging=true 的來源，「載入更多」時可以用 ?paged= 參數去抓更舊的文章；
 // 其他來源（RSS.app 產生的 feed）本身就是抓好的固定清單，沒有分頁能力。
+// Yahoo新聞／遊戲角落／4Gamers 這三個來源都是靠第三方「網頁轉RSS」工具（rss.app／PolitePaul）產生的 feed，
+// 陸續遇到：rss.app 混入不相關新聞、rss.app 試用期過期、PolitePaul 被 Yahoo 隱私權彈窗擋住、
+// PolitePaul 抓到空內容等問題，穩定性不足，故先移除，只保留原生 RSS、最穩定的 Vchavcha。
 const NEWS_SOURCES = [
-  { key: 'vchavcha', name: 'Vchavcha', url: 'https://vchavcha.com/feed/', supportsPaging: true },
-  { key: 'udngame', name: '遊戲角落', url: 'https://rss.app/feeds/o8XoYuVNOLr9VhEu.xml', supportsPaging: false },
-  { key: 'yahoo', name: 'Yahoo新聞', url: 'https://rss.app/feeds/GuCrnEtUVQN0Y00z.xml', supportsPaging: false }
+  { key: 'vchavcha', name: 'Vchavcha', url: 'https://vchavcha.com/feed/', supportsPaging: true }
 ];
+
+// 判斷一則新聞的標題／摘要是否跟 VTuber 相關，用來過濾掉來源 feed 裡混入的無關新聞。
+// 關鍵字盡量涵蓋常見中英日文寫法與大型事務所名稱，避免像註解曾提過的
+// 「holo Ceci因家庭緊急因素宣布長休」這種標題沒有「VTuber」三個字但確實相關的新聞被誤殺。
+const NEWS_FILTER_KEYWORDS = [
+  'vtuber', 'ｖtuber', '虛擬youtuber', '虛擬主播', '虛擬偶像', 'v偶像',
+  'hololive', 'ホロライブ', 'holo', 'にじさんじ', 'nijisanji', '彩虹社',
+  'vspo', 'ぶいすぽ', '774inc', '個人勢', 'あにまーれ', '中之人', 'v圈'
+];
+function newsItemMatchesVtuber(item) {
+  const text = ((item.title || '') + ' ' + (item.description || '')).toLowerCase();
+  return NEWS_FILTER_KEYWORDS.some(k => text.includes(k.toLowerCase()));
+}
 
 let newsLoading = false;
 let newsSourcePages = {};  // 每個來源目前載入到第幾頁，例如 { vchavcha: 1 }
@@ -1678,7 +1808,7 @@ function renderNewsGrid() {
 }
 
 // 向 rss2json 要某個來源某一頁的資料，並標記來源名稱。&count=20 只取 feed 最前面 20 筆，
-// 天然排除掉遊戲角落／Yahoo 那種 feed 排在後面的側欄雜訊（見上方 NEWS_SOURCES 註解）
+// 只取 feed 最前面 20 筆；filterNoise 來源額外會再過濾掉非 VTuber 相關的新聞（見上方 NEWS_SOURCES 註解）
 async function fetchNewsSourcePage(source, page) {
   const feedUrl = (page > 1 && source.supportsPaging) ? `${source.url}?paged=${page}` : source.url;
   const apiUrl = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(feedUrl) + '&count=20' + (NEWS_API_KEY ? '&api_key=' + encodeURIComponent(NEWS_API_KEY) : '');
@@ -1687,11 +1817,15 @@ async function fetchNewsSourcePage(source, page) {
   const data = await resp.json();
   if(data.status !== 'ok' || !Array.isArray(data.items)) throw new Error(data.message || '格式錯誤');
 
-  return data.items.map(it => ({
+  let items = data.items.map(it => ({
     title: it.title, link: it.link, pubDate: it.pubDate,
     description: it.description, thumbnail: it.thumbnail,
     sourceKey: source.key, sourceName: source.name
   }));
+
+  if(source.filterNoise) items = items.filter(newsItemMatchesVtuber);
+
+  return items;
 }
 
 function mergeAndSortNews(newItems) {
@@ -1802,6 +1936,82 @@ async function loadMoreNews() {
   }
 }
 
+/* ===== News tab switching ===== */
+function switchNewsTab(tab) {
+  const vtuberPane = document.getElementById('news-tab-vtuber');
+  const gnnPane = document.getElementById('news-tab-gnn');
+  const vtuberBtn = document.getElementById('news-tab-btn-vtuber');
+  const gnnBtn = document.getElementById('news-tab-btn-gnn');
+  if(!vtuberPane || !gnnPane) return;
+
+  const showGnn = tab === 'gnn';
+  vtuberPane.classList.toggle('hidden', showGnn);
+  gnnPane.classList.toggle('hidden', !showGnn);
+  vtuberBtn.classList.toggle('active', !showGnn);
+  gnnBtn.classList.toggle('active', showGnn);
+
+  if(showGnn && !gnnNewsTabLoaded) {
+    gnnNewsTabLoaded = true;
+    loadGnnNews();
+  }
+}
+
+function gnnNewsCardHtml(item) {
+  const excerpt = stripHtml(item.description || '').trim().slice(0, 80);
+  const ts = newsItemTimestamp(item);
+  const dateLabel = ts ? new Date(ts).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '';
+  const thumb = item.thumbnail || (item.enclosure && item.enclosure.link) || '';
+  return `<a class="news-card" href="${escapeAttr(item.link)}" target="_blank" rel="noopener">
+    ${thumb ? `<img class="news-thumb" src="${escapeAttr(thumb)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=news-thumb-fallback><i class=\\'ti ti-news\\'></i></div>'">` : `<div class="news-thumb-fallback"><i class="ti ti-news"></i></div>`}
+    <div class="news-body">
+      <div class="news-source"><i class="ti ti-rss"></i> ${escapeHtml(item.sourceName || '')}</div>
+      <div class="news-title">${escapeHtml(item.title || '')}</div>
+      ${excerpt ? `<div class="news-excerpt">${escapeHtml(excerpt)}${excerpt.length >= 80 ? '…' : ''}</div>` : ''}
+      <div class="news-date">${escapeHtml(dateLabel)}</div>
+    </div>
+  </a>`;
+}
+
+function renderGnnNewsGrid() {
+  const grid = document.getElementById('news-grid-gnn');
+  if(!grid) return;
+  grid.innerHTML = gnnNewsItems.length
+    ? gnnNewsItems.map(gnnNewsCardHtml).join('')
+    : `<div class="news-empty"><i class="ti ti-news"></i><p>目前沒有新聞</p></div>`;
+}
+
+async function loadGnnNews(forceRefresh) {
+  const grid = document.getElementById('news-grid-gnn');
+  if(!grid) return;
+
+  if(!forceRefresh) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(GNN_NEWS_CACHE_KEY) || 'null');
+      if(cached && Array.isArray(cached.items) && (Date.now() - cached.fetchedAt) < NEWS_CACHE_MS) {
+        gnnNewsItems = sortNewsByRecency(cached.items);
+        renderGnnNewsGrid();
+        return;
+      }
+    } catch(e) { /* 快取壞掉就直接重抓 */ }
+  }
+
+  if(gnnNewsLoading) return;
+  gnnNewsLoading = true;
+  grid.innerHTML = `<div class="news-loading"><i class="ti ti-loader-2"></i><p>正在讀取 GNN 遊戲新聞…</p></div>`;
+
+  try {
+    const items = await fetchNewsSourcePage(GNN_SOURCE, 1);
+    gnnNewsItems = sortNewsByRecency(items);
+    localStorage.setItem(GNN_NEWS_CACHE_KEY, JSON.stringify({ items: gnnNewsItems, fetchedAt: Date.now() }));
+    renderGnnNewsGrid();
+  } catch(err) {
+    console.error('讀取 GNN 新聞失敗:', err);
+    grid.innerHTML = `<div class="news-error"><i class="ti ti-alert-triangle"></i><p>讀取新聞失敗，可能是暫時連不上服務，稍後點「重新整理」再試一次</p></div>`;
+  } finally {
+    gnnNewsLoading = false;
+  }
+}
+
 /* ===== Navigation ===== */
 function goView(view, param, keepSearch) {
   currentView = view;
@@ -1834,7 +2044,10 @@ function goView(view, param, keepSearch) {
   if(view === 'notes') renderNotesList('notes-list-full');
   if(view === 'backup') renderStats();
   if(view === 'stream-detail') renderStreamDetail(param);
-  if(view === 'calendar') renderCalendar();
+  if(view === 'calendar') {
+    renderCalendar();
+    ensureHolodexData().then(() => { if(currentView === 'calendar') renderCalendar(); });
+  }
   if(view === 'timezone') initTzView();
   if(view === 'bookmark-detail') renderBookmarkDetail(param);
   if(view === 'news') loadVtuberNews();
@@ -2331,6 +2544,167 @@ function renderAllView() {
   renderStreamGrid('stream-grid-preview', 4);
   renderClipGrid('clip-grid-preview', null, 4);
   renderNotesList('notes-list-preview', 4);
+  renderBirthdayCountdown();
+  renderLiveStatus();
+}
+
+/* ===== Birthday countdown ===== */
+function parseBirthday(b) {
+  if(!b) return null;
+  const m = String(b).trim().match(/^(\d{1,2})[\/\-.](\d{1,2})$/);
+  if(!m) return null;
+  const month = parseInt(m[1], 10), day = parseInt(m[2], 10);
+  if(month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return { month, day };
+}
+function getUpcomingBirthdays(oshiList, withinDays) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const results = [];
+  (oshiList || []).forEach(o => {
+    const bd = parseBirthday(o.birthday);
+    if(!bd) return;
+    let next = new Date(today.getFullYear(), bd.month - 1, bd.day);
+    if(next < today) next = new Date(today.getFullYear() + 1, bd.month - 1, bd.day);
+    const daysUntil = Math.round((next - today) / 86400000);
+    results.push({ oshi: o, daysUntil, month: bd.month, day: bd.day });
+  });
+  results.sort((a, b) => a.daysUntil - b.daysUntil);
+  return withinDays == null ? results : results.filter(r => r.daysUntil <= withinDays);
+}
+function renderBirthdayCountdown() {
+  const block = document.getElementById('birthday-block');
+  const el = document.getElementById('birthday-list-preview');
+  if(!block || !el) return;
+  const { oshi } = getData();
+  const upcoming = getUpcomingBirthdays(oshi, 60);
+  if(!upcoming.length) { block.style.display = 'none'; el.innerHTML = ''; return; }
+  block.style.display = '';
+  el.innerHTML = upcoming.slice(0, 6).map(r => {
+    const label = r.daysUntil === 0
+      ? `🎉 今天是 ${escapeHtml(r.oshi.name)} 的生日！`
+      : `還有 ${r.daysUntil} 天是 ${escapeHtml(r.oshi.name)} 的生日`;
+    return `<button class="birthday-chip ${r.daysUntil === 0 ? 'is-today' : ''}" onclick="goOshiDetail('${r.oshi.id}')">
+      <span class="birthday-avatar">${r.oshi.image ? `<img src="${r.oshi.image}" alt="">` : (r.oshi.emoji || '🎂')}</span>
+      <span class="birthday-text">${label}</span>
+    </button>`;
+  }).join('');
+}
+
+/* ===== Holodex live status ===== */
+const HOLODEX_API_KEY = '4085f2cf-f1c6-45dd-afab-91aaa5b77009'; // 選填：到 https://holodex.net/ 註冊帳號、在 Account Settings 拿一組免費 API Key 填在這裡，可以提高請求上限並避免被擋
+const HOLODEX_CACHE_KEY = 'vtuber-oshi-holodex-cache';
+const HOLODEX_CACHE_MS = 5 * 60 * 1000; // 5 分鐘內不重抓，直播狀態變化快但也不用一直打 API
+let holodexItemsCache = [];
+let holodexFetchedAt = 0;
+
+function getHolodexChannelIds() {
+  const { oshi } = getData();
+  return oshi.filter(o => o.holodexId && o.holodexId.trim()).map(o => ({ id: o.holodexId.trim(), oshi: o }));
+}
+
+async function fetchHolodexData(forceRefresh) {
+  const channels = getHolodexChannelIds();
+  if(!channels.length) { holodexItemsCache = []; holodexFetchedAt = Date.now(); return []; }
+
+  if(!forceRefresh) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(HOLODEX_CACHE_KEY) || 'null');
+      if(cached && Array.isArray(cached.items) && (Date.now() - cached.fetchedAt) < HOLODEX_CACHE_MS) {
+        holodexItemsCache = cached.items;
+        holodexFetchedAt = cached.fetchedAt;
+        return holodexItemsCache;
+      }
+    } catch(e) { /* 快取壞掉就直接重抓 */ }
+  }
+
+  const idsParam = channels.map(c => c.id).join(',');
+  const url = `https://holodex.net/api/v2/live?channel_id=${encodeURIComponent(idsParam)}&status=live,upcoming&limit=50`;
+  const headers = HOLODEX_API_KEY ? { 'X-APIKEY': HOLODEX_API_KEY } : {};
+
+  const resp = await fetch(url, { headers });
+  if(!resp.ok) throw new Error('Holodex API 回應失敗：' + resp.status);
+  const data = await resp.json();
+  if(!Array.isArray(data)) throw new Error('Holodex API 格式錯誤');
+
+  const items = data.map(v => {
+    const match = channels.find(c => c.id === (v.channel && v.channel.id));
+    return {
+      videoId: v.id,
+      title: v.title,
+      status: v.status,
+      startScheduled: v.start_scheduled || null,
+      startActual: v.start_actual || null,
+      oshi: match ? match.oshi : null,
+      channelName: v.channel ? (v.channel.name || v.channel.english_name) : ''
+    };
+  }).filter(it => it.oshi);
+
+  holodexItemsCache = items;
+  holodexFetchedAt = Date.now();
+  localStorage.setItem(HOLODEX_CACHE_KEY, JSON.stringify({ items, fetchedAt: holodexFetchedAt }));
+  return items;
+}
+
+async function ensureHolodexData() {
+  if(Date.now() - holodexFetchedAt < HOLODEX_CACHE_MS && holodexFetchedAt) return holodexItemsCache;
+  try { return await fetchHolodexData(false); }
+  catch(err) { console.error('讀取 Holodex 直播動態失敗:', err); return holodexItemsCache; }
+}
+
+function formatHolodexCountdown(iso) {
+  if(!iso) return '';
+  const diffMs = new Date(iso).getTime() - Date.now();
+  if(diffMs <= 0) return '即將開始';
+  const mins = Math.round(diffMs / 60000);
+  if(mins < 60) return `還有 ${mins} 分鐘`;
+  const hrs = Math.floor(mins / 60);
+  if(hrs < 24) return `還有 ${hrs} 小時${mins % 60 ? (mins % 60) + ' 分' : ''}`;
+  const days = Math.floor(hrs / 24);
+  return `還有 ${days} 天`;
+}
+
+async function renderLiveStatus(forceRefresh) {
+  const block = document.getElementById('live-status-block');
+  const el = document.getElementById('live-status-list-preview');
+  if(!block || !el) return;
+  if(!getHolodexChannelIds().length) { block.style.display = 'none'; el.innerHTML = ''; return; }
+
+  let items;
+  try { items = forceRefresh ? await fetchHolodexData(true) : await ensureHolodexData(); }
+  catch(err) { console.error('讀取直播動態失敗:', err); block.style.display = 'none'; return; }
+
+  if(!items.length) { block.style.display = 'none'; el.innerHTML = ''; return; }
+
+  const live = items.filter(it => it.status === 'live');
+  const upcoming = items.filter(it => it.status === 'upcoming')
+    .sort((a, b) => new Date(a.startScheduled) - new Date(b.startScheduled))
+    .slice(0, 6 - live.length);
+
+  block.style.display = '';
+  el.innerHTML = [...live, ...upcoming].map(it => {
+    const isLive = it.status === 'live';
+    const sub = isLive ? '🔴 直播中' : formatHolodexCountdown(it.startScheduled);
+    return `<button class="live-status-chip ${isLive ? 'is-live' : ''}" onclick="${isLive ? `openHolodexPlayer('${it.videoId}', '${escapeAttr(it.oshi.name)}')` : `goOshiDetail('${it.oshi.id}')`}">
+      ${isLive ? '<span class="live-dot"></span>' : ''}
+      <span class="live-status-avatar">${it.oshi.image ? `<img src="${it.oshi.image}" alt="">` : (it.oshi.emoji || '📺')}</span>
+      <span class="live-status-text">
+        <div>${escapeHtml(it.oshi.name)}　<span style="color:${isLive ? '#c0392b' : 'var(--text-muted)'};font-size:11.5px;">${sub}</span></div>
+        <div class="live-status-title">${escapeHtml(it.title || '')}</div>
+      </span>
+    </button>`;
+  }).join('');
+}
+
+function openHolodexPlayer(videoId, oshiName) {
+  document.getElementById('holodex-player-title').textContent = `${oshiName} 正在直播`;
+  document.getElementById('holodex-player-frame').innerHTML =
+    `<iframe src="https://www.youtube.com/embed/${encodeURIComponent(videoId)}?autoplay=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+  document.getElementById('holodex-player-modal').classList.add('open');
+}
+function closeHolodexPlayer() {
+  document.getElementById('holodex-player-frame').innerHTML = '';
+  document.getElementById('holodex-player-modal').classList.remove('open');
 }
 
 /* ===== Stats ===== */
@@ -2565,6 +2939,7 @@ function openOshiModal(editId) {
   document.getElementById('oshi-link-youtube-input').value = existing && existing.links ? (existing.links.youtube || '') : '';
   document.getElementById('oshi-link-twitter-input').value = existing && existing.links ? (existing.links.twitter || '') : '';
   document.getElementById('oshi-link-twitch-input').value = existing && existing.links ? (existing.links.twitch || '') : '';
+  document.getElementById('oshi-holodex-id-input').value = existing ? (existing.holodexId || '') : '';
   document.getElementById('oshi-image-input').value = '';
   updateImagePreview();
   switchAvatarMode(avatarMode);
@@ -2698,6 +3073,7 @@ function saveOshi() {
     twitter: normLink(document.getElementById('oshi-link-twitter-input').value),
     twitch: normLink(document.getElementById('oshi-link-twitch-input').value)
   };
+  const holodexIdVal = document.getElementById('oshi-holodex-id-input').value.trim();
 
   if(editingOshiId) {
     const o = d.oshi.find(x => x.id === editingOshiId);
@@ -2709,6 +3085,7 @@ function saveOshi() {
       o.colors = colorsVal; o.color = colorVal;
       o.extras = extrasVal; o.extra = extraVal;
       o.links = linksVal;
+      o.holodexId = holodexIdVal;
     }
     if(!saveData(d)) return;
     closeModal('oshi-modal');
@@ -2724,7 +3101,7 @@ function saveOshi() {
       nickname: nicknameVal, birthday: birthdayVal, debut: debutVal,
       colors: colorsVal, color: colorVal,
       extras: extrasVal, extra: extraVal,
-      links: linksVal, ts: Date.now()
+      links: linksVal, holodexId: holodexIdVal, ts: Date.now()
     });
     if(!saveData(d)) return;
     closeModal('oshi-modal');
@@ -3570,6 +3947,7 @@ function renderCalendar() {
   label.textContent = `${calYear} 年 ${calMonth + 1} 月`;
 
   const groups = getStreamGroups();
+  const { oshi } = getData();
   const byDate = {};
   groups.forEach(g => {
     if(!g.streamDate) return;
@@ -3578,6 +3956,25 @@ function renderCalendar() {
   });
 
   Object.values(byDate).forEach(arr => arr.sort((a,b) => (a.streamTime||'').localeCompare(b.streamTime||'')));
+
+  const birthdaysByDay = {};
+  oshi.forEach(o => {
+    const bd = parseBirthday(o.birthday);
+    if(bd && bd.month === calMonth + 1) {
+      if(!birthdaysByDay[bd.day]) birthdaysByDay[bd.day] = [];
+      birthdaysByDay[bd.day].push(o);
+    }
+  });
+
+  const holodexByDate = {};
+  holodexItemsCache.forEach(it => {
+    const iso = it.status === 'live' ? it.startActual : it.startScheduled;
+    if(!iso) return;
+    const d = new Date(iso);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if(!holodexByDate[dateStr]) holodexByDate[dateStr] = [];
+    holodexByDate[dateStr].push(it);
+  });
 
   const firstDay = new Date(calYear, calMonth, 1);
   const startWeekday = firstDay.getDay();
@@ -3592,11 +3989,21 @@ function renderCalendar() {
   for(let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     const streams = byDate[dateStr] || [];
+    const dayBirthdays = birthdaysByDay[day] || [];
+    const dayHolodex = holodexByDate[dateStr] || [];
     const isToday = dateStr === todayStr;
     const visible = streams.slice(0, 2);
     const extra = streams.length - visible.length;
-    html += `<div class="cal-cell ${isToday?'today':''} ${streams.length?'has-stream':''}">
+    html += `<div class="cal-cell ${isToday?'today':''} ${streams.length?'has-stream':''} ${dayBirthdays.length?'has-birthday':''}">
       <div class="cal-date-num">${day}</div>
+      ${dayBirthdays.map(o => `<button class="cal-birthday-chip" onclick="goOshiDetail('${o.id}')" title="${escapeAttr(o.name)} 生日">🎂 ${escapeHtml(o.name)}</button>`).join('')}
+      ${dayHolodex.map(it => {
+        const isLive = it.status === 'live';
+        const label = `${isLive ? '🔴' : '📅'} ${it.oshi.name}`;
+        return isLive
+          ? `<button class="cal-live-chip" onclick="openHolodexPlayer('${it.videoId}', '${escapeAttr(it.oshi.name)}')" title="${escapeAttr(it.title)}">${escapeHtml(label)}</button>`
+          : `<button class="cal-sched-chip" onclick="goOshiDetail('${it.oshi.id}')" title="${escapeAttr(it.title)}">${escapeHtml(label)}</button>`;
+      }).join('')}
       ${visible.map(g => {
         const title = g.items.find(i => i.title)?.title || g.items[0].cat;
         const timeLabel = g.streamTime ? `${g.streamTime} ` : '';
