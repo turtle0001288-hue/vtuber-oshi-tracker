@@ -2644,8 +2644,8 @@ async function fetchHolodexData(forceRefresh) {
     } catch(e) { /* 快取壞掉就直接重抓 */ }
   }
 
-  const idsParam = channels.map(c => c.id).join(',');
-  const url = `https://holodex.net/api/v2/live?channel_id=${encodeURIComponent(idsParam)}&status=live,upcoming&limit=50`;
+  const idParams = channels.map(c => `channel_id=${encodeURIComponent(c.id)}`).join('&');
+  const url = `https://holodex.net/api/v2/live?${idParams}&status=live&status=upcoming&limit=50`;
   const headers = HOLODEX_API_KEY ? { 'X-APIKEY': HOLODEX_API_KEY } : {};
   holodexLastRequestUrl = url;
   holodexLastError = null;
