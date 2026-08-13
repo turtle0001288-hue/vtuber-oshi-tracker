@@ -2644,40 +2644,30 @@ async function fetchHolodexData(forceRefresh) {
     } catch(e) { /* 快取壞掉就直接重抓 */ }
   }
 
+  const idsParam = channels.map(c => c.id).join(',');
+  const url = `https://holodex.net/api/v2/users/live?channels=${encodeURIComponent(idsParam)}`;
   const headers = HOLODEX_API_KEY ? { 'X-APIKEY': HOLODEX_API_KEY } : {};
+  holodexLastRequestUrl = url;
+  holodexLastError = null;
 
-  // Holodex /v2/live only reliably handles one channel_id at a time
-  // → fetch each channel separately and merge
-  const allData = [];
-  let lastUrl = '';
-  for(const ch of channels) {
-    const url = `https://holodex.net/api/v2/live?channel_id=${encodeURIComponent(ch.id)}&status=live&status=upcoming&limit=50`;
-    lastUrl = url;
-    holodexLastRequestUrl = url;
-    holodexLastError = null;
-    let resp, data;
-    try {
-      resp = await fetch(url, { headers, cache: 'no-store' });
-      holodexLastStatusCode = resp.status;
-      if(!resp.ok && resp.status !== 304) throw new Error('Holodex API 回應失敗：狀態碼 ' + resp.status);
-      data = await resp.json();
-      if(!Array.isArray(data)) throw new Error('Holodex API 格式錯誤（回傳的不是陣列）');
-      allData.push(...data);
-    } catch(err) {
-      holodexLastError = err.message || String(err);
-      throw err;
-    }
+  let resp, data;
+  try {
+    resp = await fetch(url, { headers, cache: 'no-store' });
+    holodexLastStatusCode = resp.status;
+    if(!resp.ok && resp.status !== 304) throw new Error('Holodex API 回應失敗：狀態碼 ' + resp.status);
+    data = await resp.json();
+    if(!Array.isArray(data)) throw new Error('Holodex API 格式錯誤（回傳的不是陣列）');
+  } catch(err) {
+    holodexLastError = err.message || String(err);
+    throw err;
   }
-
-  // Deduplicate by video id
-  const seen = new Set();
-  const data = allData.filter(v => { if(seen.has(v.id)) return false; seen.add(v.id); return true; });
-  holodexLastRequestUrl = lastUrl;
 
   holodexLastRawCount = data.length;
 
   const items = data.map(v => {
-    const match = channels.find(c => c.id === (v.channel && v.channel.id));
+    // /v2/users/live may return channel_id at top level or nested under channel
+    const vid = (v.channel && v.channel.id) || v.channel_id || '';
+    const match = channels.find(c => c.id === vid);
     return {
       videoId: v.id,
       title: v.title,
@@ -2685,7 +2675,7 @@ async function fetchHolodexData(forceRefresh) {
       startScheduled: v.start_scheduled || null,
       startActual: v.start_actual || null,
       oshi: match ? match.oshi : null,
-      channelName: v.channel ? (v.channel.name || v.channel.english_name) : ''
+      channelName: v.channel ? (v.channel.name || v.channel.english_name) : (v.channel_name || '')
     };
   }).filter(it => it.oshi);
 
