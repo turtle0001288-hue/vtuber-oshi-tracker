@@ -594,6 +594,42 @@
   .live-status-title { font-size: 11.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .holodex-player-frame { position: relative; width: 100%; padding-top: 56.25%; }
   .holodex-player-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: var(--radius); }
+  .holodex-import-list { display: flex; flex-direction: column; gap: 8px; }
+  .holodex-import-card {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .holodex-import-thumb { width: 96px; height: 54px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: var(--surface-2); }
+
+  /* ===== Holodex oshi filter chips ===== */
+  .holodex-oshi-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+  .holodex-oshi-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; padding: 3px 11px; border-radius: 20px; cursor: pointer;
+    border: 0.5px solid var(--border); background: var(--surface-1);
+    color: var(--text-secondary); font-family: var(--font-sans); transition: all 0.1s;
+  }
+  .holodex-oshi-chip.sel { background: var(--bg-pro); border-color: var(--border-pro); color: var(--text-pro); font-weight: 500; }
+  .holodex-oshi-chip img { width: 16px; height: 16px; border-radius: 50%; object-fit: cover; }
+
+  /* ===== Holodex batch import bar ===== */
+  .holodex-batch-bar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 8px 12px; background: var(--surface-1); border: 0.5px solid var(--border);
+    border-radius: 10px; margin-bottom: 10px;
+  }
+  .holodex-batch-count { font-size: 12.5px; color: var(--text-secondary); flex: 1; }
+
+  /* ===== Holodex card checkbox ===== */
+  .holodex-import-card { position: relative; }
+  .holodex-card-check {
+    width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; accent-color: var(--fill-pro);
+  }
+  .holodex-import-body { flex: 1; min-width: 0; }
+  .holodex-import-title { font-size: 13px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .holodex-import-meta { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
+  .holodex-lang-checkbox { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
   .calendar-legend { display: flex; flex-direction: column; gap: 10px; }
   .stream-date-badge {
     display: inline-flex; align-items: center; gap: 4px;
@@ -1110,8 +1146,13 @@
 
     <!-- VIEW: Holodex live status -->
     <div id="view-holodex" class="hidden">
-      <div class="news-tabs">
+      <div class="news-tabs" style="flex-wrap:wrap;">
         <button class="news-tab active" id="holodex-tab-btn-live" onclick="switchHolodexTab('live')"><i class="ti ti-broadcast"></i> 直播中 / 排程</button>
+        <button class="news-tab" id="holodex-tab-btn-clips" onclick="switchHolodexTab('clips')"><i class="ti ti-scissors"></i> 剪輯匯入</button>
+        <button class="news-tab" id="holodex-tab-btn-vods" onclick="switchHolodexTab('vods')"><i class="ti ti-video"></i> 直播存檔</button>
+        <button class="news-tab" id="holodex-tab-btn-channel" onclick="switchHolodexTab('channel')"><i class="ti ti-id-badge-2"></i> 頻道資料</button>
+        <button class="news-tab" id="holodex-tab-btn-collab" onclick="switchHolodexTab('collab')"><i class="ti ti-users"></i> 聯動偵測</button>
+        <button class="news-tab" id="holodex-tab-btn-settings" onclick="switchHolodexTab('settings')"><i class="ti ti-settings"></i> 設定</button>
         <button class="news-tab" id="holodex-tab-btn-debug" onclick="switchHolodexTab('debug')"><i class="ti ti-bug"></i> 偵錯資訊</button>
       </div>
 
@@ -1121,6 +1162,71 @@
           <button class="btn btn-sm" onclick="renderHolodexPage(true)"><i class="ti ti-refresh"></i> 重新整理</button>
         </div>
         <div class="live-status-list" id="holodex-page-list" style="margin-top:14px;"></div>
+      </div>
+
+      <div id="holodex-tab-clips" class="hidden">
+        <div class="filter-bar">
+          <div style="flex:1;font-size:12.5px;color:var(--text-muted);">抓取所有有標記到你推し頻道的剪輯（依「設定」分頁選的語言與天數過濾），跟你現有的剪輯庫比對，只列出還沒加入的</div>
+          <button class="btn btn-sm" onclick="renderHolodexClipsTab(true)"><i class="ti ti-refresh"></i> 重新整理</button>
+        </div>
+        <div class="holodex-oshi-filter" id="holodex-clips-oshi-filter"></div>
+        <div class="holodex-batch-bar" id="holodex-clips-batch-bar" style="display:none;">
+          <button class="btn btn-sm" onclick="holodexSelectAll('clips')"><i class="ti ti-checks"></i> 全選</button>
+          <button class="btn btn-sm" onclick="holodexDeselectAll('clips')"><i class="ti ti-square"></i> 取消全選</button>
+          <span class="holodex-batch-count" id="holodex-clips-batch-count">已選 0 筆</span>
+          <button class="btn btn-sm btn-pro" onclick="holodexBatchImport('clips')" id="holodex-clips-batch-btn"><i class="ti ti-plus"></i> 加入已選</button>
+        </div>
+        <div class="holodex-import-list" id="holodex-clips-list" style="margin-top:4px;"></div>
+      </div>
+
+      <div id="holodex-tab-vods" class="hidden">
+        <div class="filter-bar">
+          <div style="flex:1;font-size:12.5px;color:var(--text-muted);">抓取推し過去的直播存檔，跟你現有的直播記錄比對，只列出還沒加入的（依「設定」分頁的天數過濾，最多抓最新 30 場）</div>
+          <button class="btn btn-sm" onclick="renderHolodexVodsTab(true)"><i class="ti ti-refresh"></i> 重新整理</button>
+        </div>
+        <div class="holodex-oshi-filter" id="holodex-vods-oshi-filter"></div>
+        <div class="holodex-batch-bar" id="holodex-vods-batch-bar" style="display:none;">
+          <button class="btn btn-sm" onclick="holodexSelectAll('vods')"><i class="ti ti-checks"></i> 全選</button>
+          <button class="btn btn-sm" onclick="holodexDeselectAll('vods')"><i class="ti ti-square"></i> 取消全選</button>
+          <span class="holodex-batch-count" id="holodex-vods-batch-count">已選 0 筆</span>
+          <button class="btn btn-sm btn-pro" onclick="holodexBatchImport('vods')" id="holodex-vods-batch-btn"><i class="ti ti-plus"></i> 加入已選</button>
+        </div>
+        <div class="holodex-import-list" id="holodex-vods-list" style="margin-top:4px;"></div>
+      </div>
+
+      <div id="holodex-tab-channel" class="hidden">
+        <div class="filter-bar">
+          <div style="flex:1;font-size:12.5px;color:var(--text-muted);">抓取推し的頻道基本資料（所屬事務所、訂閱數、X 連結等），可以選擇要不要套用回推し資料</div>
+          <button class="btn btn-sm" onclick="renderHolodexChannelTab(true)"><i class="ti ti-refresh"></i> 重新整理</button>
+        </div>
+        <div class="holodex-oshi-filter" id="holodex-channel-oshi-filter"></div>
+        <div id="holodex-channel-list" style="margin-top:10px; display:flex; flex-direction:column; gap:10px;"></div>
+      </div>
+
+      <div id="holodex-tab-collab" class="hidden">
+        <div class="filter-bar">
+          <div style="flex:1;font-size:12.5px;color:var(--text-muted);">找出「其他頻道主辦、你的推し有登場」的聯動直播（依推し自己頻道最近登場紀錄，非主辦視角；同樣套用「設定」分頁的天數過濾）</div>
+          <button class="btn btn-sm" onclick="renderHolodexCollabTab(true)"><i class="ti ti-refresh"></i> 重新整理</button>
+        </div>
+        <div class="holodex-import-list" id="holodex-collab-list" style="margin-top:14px;"></div>
+      </div>
+
+      <div id="holodex-tab-settings" class="hidden">
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; max-width:420px;">
+          <div style="font-size:13px; font-weight:500; margin-bottom:10px;">剪輯／直播存檔匯入的語言篩選</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">只有勾選的語言會出現在「剪輯匯入」的建議清單裡（Holodex 的語言標記是剪輯上傳者自己勾的，中文不分繁簡）</div>
+          <div id="holodex-lang-checkboxes" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; max-width:420px; margin-top:14px;">
+          <div style="font-size:13px; font-weight:500; margin-bottom:10px;">只看最近幾天</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">套用在「剪輯匯入」「直播存檔」「聯動偵測」三個分頁，超過這個天數的項目不會出現在建議清單裡</div>
+          <select id="holodex-days-select" onchange="onHolodexDaysChange()">
+            <option value="7">最近 7 天</option>
+            <option value="14">最近 14 天</option>
+            <option value="30">最近 30 天</option>
+            <option value="0">不限制</option>
+          </select>
+        </div>
       </div>
 
       <div id="holodex-tab-debug" class="hidden">
@@ -2781,17 +2887,20 @@ function closeHolodexPlayer() {
 }
 
 /* ===== Holodex dedicated page ===== */
+const HOLODEX_TABS = ['live', 'clips', 'vods', 'channel', 'collab', 'settings', 'debug'];
 function switchHolodexTab(tab) {
-  const liveBtn = document.getElementById('holodex-tab-btn-live');
-  const debugBtn = document.getElementById('holodex-tab-btn-debug');
-  const livePane = document.getElementById('holodex-tab-live');
-  const debugPane = document.getElementById('holodex-tab-debug');
-  const showDebug = tab === 'debug';
-  liveBtn.classList.toggle('active', !showDebug);
-  debugBtn.classList.toggle('active', showDebug);
-  livePane.classList.toggle('hidden', showDebug);
-  debugPane.classList.toggle('hidden', !showDebug);
-  if(showDebug) renderHolodexDebugPanel();
+  HOLODEX_TABS.forEach(t => {
+    const btn = document.getElementById(`holodex-tab-btn-${t}`);
+    const pane = document.getElementById(`holodex-tab-${t}`);
+    if(btn) btn.classList.toggle('active', t === tab);
+    if(pane) pane.classList.toggle('hidden', t !== tab);
+  });
+  if(tab === 'debug') renderHolodexDebugPanel();
+  if(tab === 'clips') renderHolodexClipsTab(false);
+  if(tab === 'vods') renderHolodexVodsTab(false);
+  if(tab === 'channel') renderHolodexChannelTab(false);
+  if(tab === 'collab') renderHolodexCollabTab(false);
+  if(tab === 'settings') renderHolodexSettingsTab();
 }
 
 async function renderHolodexPage(forceRefresh) {
@@ -2873,6 +2982,490 @@ function renderHolodexDebugPanel() {
     </div>
     <div style="margin-top:14px; font-size:12px; color:var(--text-muted);">如果「API 原始回傳筆數」大於 0，但「成功比對到推し的筆數」是 0，代表 API 有回應資料，但程式沒辦法把回傳的頻道跟你設定的推し對上，這種情況請把這頁截圖給開發者看。</div>
   `;
+}
+
+/* ===== Holodex: shared helpers ===== */
+const HOLODEX_LANG_KEY = 'vtuber-oshi-holodex-lang';
+const HOLODEX_LANG_OPTIONS = [
+  { code: 'zh', label: '中文（不分繁簡）' },
+  { code: 'en', label: '英文' },
+  { code: 'ja', label: '日文' },
+  { code: 'ko', label: '韓文' },
+  { code: 'id', label: '印尼文' }
+];
+
+function getHolodexLangFilter() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HOLODEX_LANG_KEY) || 'null');
+    if(Array.isArray(saved) && saved.length) return saved;
+  } catch(e) {}
+  return ['zh', 'en', 'ja'];
+}
+function setHolodexLangFilter(langs) {
+  localStorage.setItem(HOLODEX_LANG_KEY, JSON.stringify(langs));
+}
+
+const HOLODEX_DAYS_KEY = 'vtuber-oshi-holodex-days';
+function getHolodexDaysFilter() {
+  const saved = parseInt(localStorage.getItem(HOLODEX_DAYS_KEY), 10);
+  return Number.isFinite(saved) ? saved : 14; // 預設最近 14 天，0 代表不限制
+}
+function setHolodexDaysFilter(days) {
+  localStorage.setItem(HOLODEX_DAYS_KEY, String(days));
+}
+// 傳入 ISO 時間字串，判斷是否在「最近 N 天」範圍內；days=0 代表不限制，一律通過
+function isWithinHolodexDaysFilter(iso) {
+  const days = getHolodexDaysFilter();
+  if(!days) return true;
+  if(!iso) return true; // 沒有時間資訊的項目不主動濾掉，避免漏掉沒填時間的資料
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  return new Date(iso).getTime() >= cutoff;
+}
+
+function extractYoutubeId(url) {
+  if(!url) return null;
+  const m = String(url).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{6,})/);
+  return m ? m[1] : null;
+}
+
+// 把 UTC ISO 時間字串轉成台灣時區（UTC+8）的日期/時間字串，格式跟表單欄位一致
+function isoToTaiwanParts(iso) {
+  if(!iso) return { date: '', time: '' };
+  const d = new Date(iso);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  }).formatToParts(d);
+  const get = t => parts.find(p => p.type === t)?.value || '';
+  return { date: `${get('year')}-${get('month')}-${get('day')}`, time: `${get('hour')}:${get('minute')}` };
+}
+
+async function holodexFetchVideos(params) {
+  const url = `https://holodex.net/api/v2/videos?${new URLSearchParams(params).toString()}`;
+  const headers = HOLODEX_API_KEY ? { 'X-APIKEY': HOLODEX_API_KEY } : {};
+  holodexLastRequestUrl = url;
+  holodexLastError = null;
+  try {
+    const resp = await fetch(url, { headers, cache: 'no-store' });
+    holodexLastStatusCode = resp.status;
+    if(!resp.ok && resp.status !== 304) throw new Error('Holodex API 回應失敗：狀態碼 ' + resp.status);
+    const data = await resp.json();
+    if(!Array.isArray(data)) throw new Error('Holodex API 格式錯誤（回傳的不是陣列）');
+    holodexLastRawCount = data.length;
+    return data;
+  } catch(err) {
+    holodexLastError = err.message || String(err);
+    throw err;
+  }
+}
+
+function holodexImportListHtml(items, renderItem) {
+  if(!items.length) return `<div class="news-empty"><i class="ti ti-check"></i><p>沒有找到新的項目，可能都已經加過、或這次沒有符合條件的內容</p></div>`;
+  return items.map(renderItem).join('');
+}
+
+/* ===== Holodex: 剪輯匯入 ===== */
+/* ===== Holodex: oshi filter + batch import ===== */
+const holodexFilter   = { clips: [], vods: [], channel: [] }; // selected oshi ids; empty = all
+const holodexSelected = { clips: new Map(), vods: new Map() }; // videoId -> item data
+
+function renderHolodexOshiFilter(tabKey, configured, onToggle) {
+  const el = document.getElementById(`holodex-${tabKey}-oshi-filter`);
+  if(!el || !configured.length) return;
+  const all = holodexFilter[tabKey].length === 0;
+  el.innerHTML = `<button class="holodex-oshi-chip ${all ? 'sel' : ''}" onclick="holodexToggleOshiFilter('${tabKey}', null)">全部</button>` +
+    configured.map(c => {
+      const sel = holodexFilter[tabKey].includes(c.oshi.id);
+      const avatar = c.oshi.image
+        ? `<img src="${c.oshi.image}" alt="">`
+        : `<span>${c.oshi.emoji || '🌸'}</span>`;
+      return `<button class="holodex-oshi-chip ${sel ? 'sel' : ''}" onclick="holodexToggleOshiFilter('${tabKey}', '${c.oshi.id}')">${avatar}${escapeHtml(c.oshi.name)}</button>`;
+    }).join('');
+}
+
+function holodexToggleOshiFilter(tabKey, oshiId) {
+  if(oshiId === null) {
+    holodexFilter[tabKey] = [];
+  } else {
+    const idx = holodexFilter[tabKey].indexOf(oshiId);
+    if(idx >= 0) holodexFilter[tabKey].splice(idx, 1);
+    else holodexFilter[tabKey].push(oshiId);
+  }
+  // Re-render the relevant tab without re-fetching
+  if(tabKey === 'clips') renderHolodexClipsTab(false);
+  if(tabKey === 'vods') renderHolodexVodsTab(false);
+  if(tabKey === 'channel') renderHolodexChannelTab(false);
+}
+
+function holodexFilterSuggestions(tabKey, suggestions) {
+  if(!holodexFilter[tabKey].length) return suggestions;
+  return suggestions.filter(it => holodexFilter[tabKey].includes(it.oshi.id));
+}
+
+function holodexUpdateBatchBar(tabKey) {
+  const bar = document.getElementById(`holodex-${tabKey}-batch-bar`);
+  const countEl = document.getElementById(`holodex-${tabKey}-batch-count`);
+  const n = holodexSelected[tabKey].size;
+  if(bar) bar.style.display = n > 0 || document.querySelectorAll(`#holodex-${tabKey}-list .holodex-card-check`).length > 0 ? 'flex' : 'none';
+  if(countEl) countEl.textContent = `已選 ${n} 筆`;
+}
+
+function holodexOnCheck(tabKey, videoId, checked, itemJson) {
+  if(checked) {
+    try { holodexSelected[tabKey].set(videoId, JSON.parse(decodeURIComponent(itemJson))); } catch(e) {}
+  } else {
+    holodexSelected[tabKey].delete(videoId);
+  }
+  holodexUpdateBatchBar(tabKey);
+}
+
+function holodexSelectAll(tabKey) {
+  document.querySelectorAll(`#holodex-${tabKey}-list .holodex-card-check`).forEach(cb => {
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change'));
+  });
+}
+
+function holodexDeselectAll(tabKey) {
+  holodexSelected[tabKey].clear();
+  document.querySelectorAll(`#holodex-${tabKey}-list .holodex-card-check`).forEach(cb => { cb.checked = false; });
+  holodexUpdateBatchBar(tabKey);
+}
+
+function holodexBatchImport(tabKey) {
+  const items = [...holodexSelected[tabKey].values()];
+  if(!items.length) { showToast('請先勾選要加入的項目'); return; }
+  items.forEach(it => {
+    if(tabKey === 'clips') addClipFromHolodex(it.videoId, it.title, it.availableAt, it.oshi.id, it.clipperName, it.clipperId);
+    if(tabKey === 'vods') addVodFromHolodex(it.videoId, it.title, it.availableAt, it.oshi.id);
+  });
+  holodexSelected[tabKey].clear();
+  showToast(`已加入 ${items.length} 筆 ✓`);
+}
+
+// Cached suggestions for re-use when only filter changes (no re-fetch needed)
+let _holodexClipsSuggestions = null;
+let _holodexVodsSuggestions = null;
+
+function holodexRenderImportCards(tabKey, listId, suggestions, cardHtmlFn) {
+  holodexSelected[tabKey].clear();
+  const filtered = holodexFilterSuggestions(tabKey, suggestions);
+  const list = document.getElementById(listId);
+  if(!list) return;
+  if(!filtered.length) {
+    list.innerHTML = `<div class="news-empty"><i class="ti ti-mood-empty"></i><p>沒有符合篩選條件的項目</p></div>`;
+    const bar = document.getElementById(`holodex-${tabKey}-batch-bar`);
+    if(bar) bar.style.display = 'none';
+    return;
+  }
+  list.innerHTML = filtered.map(it => cardHtmlFn(it)).join('');
+  // Show batch bar
+  const bar = document.getElementById(`holodex-${tabKey}-batch-bar`);
+  if(bar) bar.style.display = 'flex';
+  holodexUpdateBatchBar(tabKey);
+}
+
+async function renderHolodexClipsTab(forceRefresh) {
+  const list = document.getElementById('holodex-clips-list');
+  if(!list) return;
+  const configured = getHolodexChannelIds();
+  if(!configured.length) {
+    list.innerHTML = `<div class="news-empty"><i class="ti ti-broadcast-off"></i><p>先到推し編輯畫面填 Holodex 頻道 ID 才能匯入剪輯</p></div>`;
+    return;
+  }
+
+  renderHolodexOshiFilter('clips', configured);
+
+  if(forceRefresh || !_holodexClipsSuggestions) {
+    list.innerHTML = `<div class="news-loading"><i class="ti ti-loader-2"></i><p>正在搜尋剪輯…</p></div>`;
+    const langs = getHolodexLangFilter();
+    const { clips } = getData();
+    const existingIds = new Set(clips.map(c => extractYoutubeId(c.url)).filter(Boolean));
+    try {
+      const results = await Promise.allSettled(configured.map(c => holodexFetchVideos({
+        mentioned_channel_id: c.id, type: 'clip', lang: langs.join(','), limit: '30', sort: 'available_at', order: 'desc'
+      })));
+      const suggestions = [];
+      results.forEach((r, i) => {
+        if(r.status !== 'fulfilled') return;
+        r.value.forEach(v => {
+          if(existingIds.has(v.id)) return;
+          if(!isWithinHolodexDaysFilter(v.available_at)) return;
+          suggestions.push({
+            videoId: v.id, title: v.title, availableAt: v.available_at,
+            clipperName: v.channel ? (v.channel.name || v.channel.english_name) : '',
+            clipperId: v.channel ? v.channel.id : '',
+            oshi: configured[i].oshi
+          });
+        });
+      });
+      if(!results.some(r => r.status === 'fulfilled')) throw new Error('所有頻道的請求都失敗了，切到「偵錯資訊」分頁看詳細錯誤');
+      _holodexClipsSuggestions = suggestions;
+    } catch(err) {
+      list.innerHTML = `<div class="news-error"><i class="ti ti-alert-triangle"></i><p>讀取失敗：${escapeHtml(err.message || String(err))}</p></div>`;
+      return;
+    }
+  }
+
+  holodexRenderImportCards('clips', 'holodex-clips-list', _holodexClipsSuggestions, it => {
+    // encodeURIComponent 不編碼單引號(')，需手動補上，否則標題含'會破壞 onchange 屬性語法
+    const itemJson = encodeURIComponent(JSON.stringify(it)).replace(/'/g, '%27');
+    return `<div class="holodex-import-card">
+      <input type="checkbox" class="holodex-card-check" onchange="holodexOnCheck('clips','${it.videoId}',this.checked,'${itemJson}')">
+      <img class="holodex-import-thumb" src="https://i.ytimg.com/vi/${encodeURIComponent(it.videoId)}/mqdefault.jpg" alt="" loading="lazy">
+      <div class="holodex-import-body">
+        <div class="holodex-import-title">${escapeHtml(it.title || '')}</div>
+        <div class="holodex-import-meta">${escapeHtml(it.oshi.name)}　by ${escapeHtml(it.clipperName || '未知頻道')}</div>
+      </div>
+    </div>`;
+  });
+}
+
+function addClipFromHolodex(videoId, title, availableAt, oshiId, clipperName, clipperId) {
+  const d = getData();
+  if(d.clips.some(c => extractYoutubeId(c.url) === videoId)) return; // deduplicate
+  const uploaderUrl = clipperId ? `https://www.youtube.com/channel/${clipperId}` : null;
+  const match = clipperName ? findKaraokemenMatch(clipperName, uploaderUrl) : null;
+  const { date } = isoToTaiwanParts(availableAt);
+  d.clips.push({
+    id: Date.now().toString() + Math.random().toString(36).slice(2, 5),
+    url: `https://www.youtube.com/watch?v=${videoId}`,
+    title, date, cat: '其他', note: '',
+    oshiIds: [oshiId], tags: [],
+    uploaderName: clipperName || null, uploaderUrl,
+    karaokemenId: match ? match.id : null,
+    ts: Date.now()
+  });
+  if(!saveData(d)) return;
+  renderSidebarNav();
+  if(_holodexClipsSuggestions) _holodexClipsSuggestions = _holodexClipsSuggestions.filter(s => s.videoId !== videoId);
+}
+
+async function renderHolodexVodsTab(forceRefresh) {
+  const list = document.getElementById('holodex-vods-list');
+  if(!list) return;
+  const configured = getHolodexChannelIds();
+  if(!configured.length) {
+    list.innerHTML = `<div class="news-empty"><i class="ti ti-broadcast-off"></i><p>先到推し編輯畫面填 Holodex 頻道 ID 才能匯入直播存檔</p></div>`;
+    return;
+  }
+
+  renderHolodexOshiFilter('vods', configured);
+
+  if(forceRefresh || !_holodexVodsSuggestions) {
+    list.innerHTML = `<div class="news-loading"><i class="ti ti-loader-2"></i><p>正在搜尋直播存檔…</p></div>`;
+    const { diary } = getData();
+    const existingIds = new Set(diary.map(x => extractYoutubeId(x.url)).filter(Boolean));
+    try {
+      const results = await Promise.allSettled(configured.map(c => holodexFetchVideos({
+        channel_id: c.id, type: 'stream', status: 'past', limit: '30', sort: 'available_at', order: 'desc'
+      })));
+      const suggestions = [];
+      results.forEach((r, i) => {
+        if(r.status !== 'fulfilled') return;
+        r.value.forEach(v => {
+          if(existingIds.has(v.id)) return;
+          if(!isWithinHolodexDaysFilter(v.available_at)) return;
+          suggestions.push({ videoId: v.id, title: v.title, availableAt: v.available_at, oshi: configured[i].oshi });
+        });
+      });
+      if(!results.some(r => r.status === 'fulfilled')) throw new Error('所有頻道的請求都失敗了，切到「偵錯資訊」分頁看詳細錯誤');
+      _holodexVodsSuggestions = suggestions;
+    } catch(err) {
+      list.innerHTML = `<div class="news-error"><i class="ti ti-alert-triangle"></i><p>讀取失敗：${escapeHtml(err.message || String(err))}</p></div>`;
+      return;
+    }
+  }
+
+  holodexRenderImportCards('vods', 'holodex-vods-list', _holodexVodsSuggestions, it => {
+    const itemJson = encodeURIComponent(JSON.stringify(it)).replace(/'/g, '%27');
+    return `<div class="holodex-import-card">
+      <input type="checkbox" class="holodex-card-check" onchange="holodexOnCheck('vods','${it.videoId}',this.checked,'${itemJson}')">
+      <img class="holodex-import-thumb" src="https://i.ytimg.com/vi/${encodeURIComponent(it.videoId)}/mqdefault.jpg" alt="" loading="lazy">
+      <div class="holodex-import-body">
+        <div class="holodex-import-title">${escapeHtml(it.title || '')}</div>
+        <div class="holodex-import-meta">${escapeHtml(it.oshi.name)}</div>
+      </div>
+    </div>`;
+  });
+}
+
+function addVodFromHolodex(videoId, title, availableAt, oshiId) {
+  const d = getData();
+  if(d.diary.some(x => extractYoutubeId(x.url) === videoId)) return; // deduplicate
+  const { date, time } = isoToTaiwanParts(availableAt);
+  d.diary.push({
+    id: Date.now().toString() + Math.random().toString(36).slice(2, 5),
+    oshiId, cat: '雑談配信', tags: [], title,
+    url: `https://www.youtube.com/watch?v=${videoId}`,
+    streamDate: date || null, streamTime: time || null,
+    content: '<p>（從 Holodex 自動匯入的直播存檔，尚未補充心得）</p>',
+    uploaderName: null, uploaderUrl: null,
+    ts: Date.now()
+  });
+  if(!saveData(d)) return;
+  renderSidebarNav();
+  if(_holodexVodsSuggestions) _holodexVodsSuggestions = _holodexVodsSuggestions.filter(s => s.videoId !== videoId);
+}
+
+/* ===== Holodex: 頻道資料 ===== */
+async function renderHolodexChannelTab(forceRefresh) {
+  const list = document.getElementById('holodex-channel-list');
+  if(!list) return;
+  const configured = getHolodexChannelIds();
+  if(!configured.length) {
+    list.innerHTML = `<div class="news-empty"><i class="ti ti-broadcast-off"></i><p>先到推し編輯畫面填 Holodex 頻道 ID 才能抓取頻道資料</p></div>`;
+    return;
+  }
+
+  renderHolodexOshiFilter('channel', configured);
+
+  const filtered = holodexFilter.channel.length
+    ? configured.filter(c => holodexFilter.channel.includes(c.oshi.id))
+    : configured;
+
+  if(forceRefresh || list.innerHTML === '' || list.querySelector('.news-loading')) {
+    list.innerHTML = `<div class="news-loading"><i class="ti ti-loader-2"></i><p>正在讀取頻道資料…</p></div>`;
+    const headers = HOLODEX_API_KEY ? { 'X-APIKEY': HOLODEX_API_KEY } : {};
+    const results = await Promise.allSettled(filtered.map(async c => {
+      const url = `https://holodex.net/api/v2/channels/${encodeURIComponent(c.id)}`;
+      const resp = await fetch(url, { headers, cache: 'no-store' });
+      if(!resp.ok && resp.status !== 304) throw new Error('狀態碼 ' + resp.status);
+      return await resp.json();
+    }));
+    list.innerHTML = filtered.map((c, i) => {
+      const r = results[i];
+      if(r.status !== 'fulfilled') {
+        return `<div class="holodex-import-card"><div class="holodex-import-body"><div class="holodex-import-title">${escapeHtml(c.oshi.name)}</div><div class="holodex-import-meta" style="color:#c0392b;">讀取失敗：${escapeHtml(r.reason?.message || String(r.reason))}</div></div></div>`;
+      }
+      const info = r.value;
+      const subCount = info.subscriber_count ? Number(info.subscriber_count).toLocaleString('zh-TW') : null;
+      const infoJson = escapeAttr(JSON.stringify({ org: info.org || '', group: info.group || '', subCount, twitter: info.twitter || '' }));
+      return `<div class="holodex-import-card" style="align-items:flex-start;">
+        <div class="holodex-import-body">
+          <div class="holodex-import-title">${escapeHtml(c.oshi.name)}</div>
+          <div class="holodex-import-meta">
+            ${info.org ? `事務所：${escapeHtml(info.org)}　` : ''}${info.group ? `世代：${escapeHtml(info.group)}　` : ''}${subCount ? `訂閱數：${escapeHtml(subCount)}　` : ''}${info.twitter ? `X：@${escapeHtml(info.twitter)}` : ''}
+          </div>
+        </div>
+        <button class="btn btn-sm btn-pro" onclick='applyChannelInfoToOshi("${c.oshi.id}", ${infoJson})'><i class="ti ti-download"></i> 套用到推し資料</button>
+      </div>`;
+    }).join('');
+  }
+}
+
+function applyChannelInfoToOshi(oshiId, info) {
+  const d = getData();
+  const o = d.oshi.find(x => x.id === oshiId);
+  if(!o) return;
+  if(info.org && !o.agency) o.agency = info.org;
+  if(info.group && !o.unit) o.unit = info.group;
+  if(info.twitter) {
+    o.links = o.links || {};
+    if(!o.links.twitter) o.links.twitter = `https://x.com/${info.twitter}`;
+  }
+  if(info.subCount) {
+    o.extras = o.extras || [];
+    const already = o.extras.some(e => e.includes('訂閱數'));
+    if(!already) o.extras.push(`訂閱數約 ${info.subCount}（Holodex 匯入）`);
+  }
+  if(!saveData(d)) return;
+  showToast(`已套用到 ${o.name} ✓`);
+  renderSidebarNav();
+}
+
+/* ===== Holodex: 聯動偵測 ===== */
+async function renderHolodexCollabTab(forceRefresh) {
+  const list = document.getElementById('holodex-collab-list');
+  if(!list) return;
+  const configured = getHolodexChannelIds();
+  if(!configured.length) {
+    list.innerHTML = `<div class="news-empty"><i class="ti ti-broadcast-off"></i><p>先到推し編輯畫面填 Holodex 頻道 ID 才能偵測聯動</p></div>`;
+    return;
+  }
+  list.innerHTML = `<div class="news-loading"><i class="ti ti-loader-2"></i><p>正在搜尋聯動直播…</p></div>`;
+
+  try {
+    const results = await Promise.allSettled(configured.map(c => holodexFetchVideos({
+      mentioned_channel_id: c.id, type: 'stream', limit: '20', sort: 'available_at', order: 'desc'
+    })));
+
+    const suggestions = [];
+    results.forEach((r, i) => {
+      if(r.status !== 'fulfilled') return;
+      const oshi = configured[i].oshi;
+      r.value.forEach(v => {
+        const hostId = v.channel ? v.channel.id : '';
+        if(!hostId || hostId === oshi.holodexId) return; // 跳過自己主辦的直播，只留其他人主辦、有提到這位推し的
+        if(!isWithinHolodexDaysFilter(v.available_at)) return;
+        suggestions.push({
+          videoId: v.id, title: v.title, availableAt: v.available_at,
+          hostName: v.channel ? (v.channel.name || v.channel.english_name) : '未知頻道',
+          oshi
+        });
+      });
+    });
+
+    if(!results.some(r => r.status === 'fulfilled')) throw new Error('所有頻道的請求都失敗了，切到「偵錯資訊」分頁看詳細錯誤');
+
+    list.innerHTML = holodexImportListHtml(suggestions, it => `
+      <div class="holodex-import-card">
+        <img class="holodex-import-thumb" src="https://i.ytimg.com/vi/${encodeURIComponent(it.videoId)}/mqdefault.jpg" alt="" loading="lazy">
+        <div class="holodex-import-body">
+          <div class="holodex-import-title">${escapeHtml(it.title || '')}</div>
+          <div class="holodex-import-meta">${escapeHtml(it.oshi.name)}　由 ${escapeHtml(it.hostName)} 主辦</div>
+        </div>
+        <a class="btn btn-sm" href="https://www.youtube.com/watch?v=${encodeURIComponent(it.videoId)}" target="_blank" rel="noopener"><i class="ti ti-external-link"></i> 觀看</a>
+        <button class="btn btn-sm btn-pro" onclick="addCollabFromHolodex('${it.videoId}', '${escapeAttr(it.title)}', '${it.availableAt || ''}', '${it.oshi.id}', '${escapeAttr(it.hostName)}')"><i class="ti ti-plus"></i> 加入記錄</button>
+      </div>
+    `);
+  } catch(err) {
+    list.innerHTML = `<div class="news-error"><i class="ti ti-alert-triangle"></i><p>讀取失敗：${escapeHtml(err.message || String(err))}</p></div>`;
+  }
+}
+
+function addCollabFromHolodex(videoId, title, availableAt, oshiId, hostName) {
+  const d = getData();
+  const { date, time } = isoToTaiwanParts(availableAt);
+  d.diary.push({
+    id: Date.now().toString(),
+    oshiId, cat: 'コラボ', tags: [], title,
+    url: `https://www.youtube.com/watch?v=${videoId}`,
+    streamDate: date || null, streamTime: time || null,
+    content: `<p>與 ${escapeHtml(hostName)} 的聯動企劃（從 Holodex 自動匯入，尚未補充心得）</p>`,
+    uploaderName: null, uploaderUrl: null,
+    ts: Date.now()
+  });
+  if(!saveData(d)) return;
+  showToast('聯動記錄已加入 ✓');
+  renderSidebarNav();
+  renderHolodexCollabTab(false);
+}
+
+/* ===== Holodex: 語言篩選設定 ===== */
+function renderHolodexSettingsTab() {
+  const el = document.getElementById('holodex-lang-checkboxes');
+  if(!el) return;
+  const selected = getHolodexLangFilter();
+  el.innerHTML = HOLODEX_LANG_OPTIONS.map(opt => `
+    <label class="holodex-lang-checkbox">
+      <input type="checkbox" value="${opt.code}" ${selected.includes(opt.code) ? 'checked' : ''} onchange="onHolodexLangCheckboxChange()">
+      ${escapeHtml(opt.label)}
+    </label>
+  `).join('');
+
+  const daysSelect = document.getElementById('holodex-days-select');
+  if(daysSelect) daysSelect.value = String(getHolodexDaysFilter());
+}
+function onHolodexLangCheckboxChange() {
+  const checked = [...document.querySelectorAll('#holodex-lang-checkboxes input:checked')].map(el => el.value);
+  setHolodexLangFilter(checked);
+  showToast('語言篩選已更新，下次抓取剪輯會套用');
+}
+function onHolodexDaysChange() {
+  const val = parseInt(document.getElementById('holodex-days-select').value, 10);
+  setHolodexDaysFilter(val);
+  showToast('天數篩選已更新，下次抓取會套用');
 }
 
 /* ===== Stats ===== */
